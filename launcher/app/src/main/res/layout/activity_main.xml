@@ -310,7 +310,7 @@
                     style="@style/TopButton"
                     android:text="@string/inputs"
                     android:drawableStart="@drawable/ic_input"
-                    android:nextFocusDown="@+id/grid" />
+                    android:nextFocusDown="@+id/widgetMemory" />
 
                 <TextView
                     android:id="@+id/btnWifi"
@@ -320,38 +320,389 @@
                     android:ellipsize="end"
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
-                    android:nextFocusDown="@+id/grid" />
+                    android:nextFocusDown="@+id/widgetStorage" />
 
                 <TextView
                     android:id="@+id/btnReorder"
                     style="@style/TopButtonIcon"
                     android:contentDescription="@string/reorder"
                     android:drawableStart="@drawable/ic_swap_vert"
-                    android:nextFocusDown="@+id/grid" />
-
-                <TextView
-                    android:id="@+id/btnLibraryTop"
-                    style="@style/TopButtonIcon"
-                    android:visibility="gone"
-                    android:contentDescription="@string/app_library"
-                    android:drawableStart="@drawable/ic_apps"
-                    android:nextFocusDown="@+id/grid" />
+                    android:nextFocusDown="@+id/widgetAudio" />
 
                 <TextView
                     android:id="@+id/btnSettings"
                     style="@style/TopButton"
                     android:text="@string/settings"
                     android:drawableStart="@drawable/ic_settings"
-                    android:nextFocusDown="@+id/grid" />
+                    android:nextFocusDown="@+id/widgetSplit" />
             </LinearLayout>
         </RelativeLayout>
+
+        <!-- Widgets Row: Frosted glass dashboard widgets in between Top Navigation and Docker Grid -->
+        <LinearLayout
+            android:id="@+id/widgetsRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="2dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="horizontal">
+
+            <!-- 1. Memory & CPU Widget -->
+            <LinearLayout
+                android:id="@+id/widgetMemory"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/widget_card_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="9dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="9dp"
+                android:nextFocusUp="@+id/btnInputs"
+                android:nextFocusDown="@+id/grid">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="15dp"
+                        android:layout_height="15dp"
+                        android:src="@drawable/ic_memory"
+                        android:tint="#8CFFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:fontFamily="@string/font_medium"
+                        android:letterSpacing="0.14"
+                        android:text="MEMORY"
+                        android:textAllCaps="true"
+                        android:textColor="#8CFFFFFF"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/widgetMemoryVal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:fontFamily="@string/font_medium"
+                    android:includeFontPadding="false"
+                    android:text="0.6 / 0.9 GB"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/widgetMemorySub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@string/font_regular"
+                    android:singleLine="true"
+                    android:text="Amlogic Quad-Core · Fast"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- 2. Storage Widget -->
+            <LinearLayout
+                android:id="@+id/widgetStorage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/widget_card_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="9dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="9dp"
+                android:nextFocusUp="@+id/btnWifi"
+                android:nextFocusDown="@+id/grid">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="15dp"
+                        android:layout_height="15dp"
+                        android:src="@drawable/ic_storage"
+                        android:tint="#8CFFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:fontFamily="@string/font_medium"
+                        android:letterSpacing="0.14"
+                        android:text="STORAGE"
+                        android:textAllCaps="true"
+                        android:textColor="#8CFFFFFF"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/widgetStorageVal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:fontFamily="@string/font_medium"
+                    android:includeFontPadding="false"
+                    android:text="2.8 GB Free"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/widgetStorageSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@string/font_regular"
+                    android:singleLine="true"
+                    android:text="72% Avail of 3.9 GB"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- 3. Audio & Sound Modes Quick Settings Widget -->
+            <LinearLayout
+                android:id="@+id/widgetAudio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/widget_card_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="9dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="9dp"
+                android:nextFocusUp="@+id/btnReorder"
+                android:nextFocusDown="@+id/grid">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="15dp"
+                        android:layout_height="15dp"
+                        android:src="@drawable/ic_sound"
+                        android:tint="#8CFFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:fontFamily="@string/font_medium"
+                        android:letterSpacing="0.14"
+                        android:text="SOUND MODE"
+                        android:textAllCaps="true"
+                        android:textColor="#8CFFFFFF"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/widgetAudioVal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:fontFamily="@string/font_medium"
+                    android:includeFontPadding="false"
+                    android:text="Standard Mode"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/widgetAudioSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@string/font_regular"
+                    android:singleLine="true"
+                    android:text="DTS Virtual:X · Quick Sound"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- 4. Split Card: Temperature & Top RAM Apps -->
+            <LinearLayout
+                android:id="@+id/widgetSplit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/widget_card_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingTop="9dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="9dp"
+                android:nextFocusUp="@+id/btnSettings"
+                android:nextFocusDown="@+id/grid">
+
+                <!-- Left Column: Temperature -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:src="@drawable/ic_thermostat"
+                            android:tint="#8CFFFFFF" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:singleLine="true"
+                            android:maxLines="1"
+                            android:scrollHorizontally="true"
+                            android:ellipsize="end"
+                            android:fontFamily="@string/font_medium"
+                            android:letterSpacing="0.02"
+                            android:text="TEMPERATURE"
+                            android:textAllCaps="true"
+                            android:textColor="#8CFFFFFF"
+                            android:textSize="8.5sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/widgetTempVal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:fontFamily="@string/font_medium"
+                        android:includeFontPadding="false"
+                        android:text="48°C"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/widgetTempSub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:fontFamily="@string/font_regular"
+                        android:singleLine="true"
+                        android:text="Cool &amp; Safe"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Thin vertical divider between columns -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp"
+                    android:background="#26FFFFFF" />
+
+                <!-- Right Column: Top RAM Apps -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:src="@drawable/ic_chart"
+                            android:tint="#8CFFFFFF" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:singleLine="true"
+                            android:maxLines="1"
+                            android:scrollHorizontally="true"
+                            android:ellipsize="end"
+                            android:fontFamily="@string/font_medium"
+                            android:letterSpacing="0.02"
+                            android:text="TOP RAM APPS"
+                            android:textAllCaps="true"
+                            android:textColor="#8CFFFFFF"
+                            android:textSize="8.5sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/widgetRamApp1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:fontFamily="@string/font_medium"
+                        android:includeFontPadding="false"
+                        android:text="1. Hotstar 4%"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/widgetRamApp2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:fontFamily="@string/font_regular"
+                        android:text="2. Tata Play 4%"
+                        android:textColor="#B3FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
 
         <!-- The wrapper clips at the grid's edge; the grid itself must not clip so scaled tiles can overflow their cells. -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="10dp">
+            android:layout_marginTop="4dp">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/grid"

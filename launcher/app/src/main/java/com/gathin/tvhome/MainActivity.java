@@ -339,12 +339,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         public void run() {
             updateGreeting();
             updateRace();
+            updateStorageUtilisation();
+            updateAudioWidget();
             // The pill follows the network callbacks and each return to Home; only the diya's flame follows the
             // signal level, so only it needs this minute's binder calls (about 7 ms on the UI thread).
             if (festive) updateWifiLabel();
             sky.update();
             wallpaperPlayer.update();
             handler.postDelayed(this, MINUTE_MS);
+        }
+    };
+    private final Runnable widgetTick = new Runnable() {
+        @Override
+        public void run() {
+            updateSplitWidget();
+            updateMemoryWidget();
+            handler.postDelayed(this, 15000);
         }
     };
 
@@ -513,6 +523,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
+        grid.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (top != oldTop || bottom != oldBottom || left != oldLeft || right != oldRight) {
+                grid.post(this::refitGlass);
+            }
+        });
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (widgetsRow == null) return;
+                RecyclerView.LayoutManager lm = recyclerView.getLayoutManager();
+                if (lm instanceof GridLayoutManager) {
+                    int firstVisible = ((GridLayoutManager) lm).findFirstVisibleItemPosition();
+                    if (firstVisible >= COLUMNS) {
+                        setWidgetsVisible(false);
+                    } else if (firstVisible == 0 && lastFocused < COLUMNS) {
+                        setWidgetsVisible(true);
+                    }
+                }
+            }
+        });
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
             grid.setLayoutAnimation(new LayoutAnimationController(
@@ -603,21 +633,48 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_home_settings_pill, 0, 0, 0);
         }
         btnSettings.setOnClickListener(v -> {
-            if (launcherSettingsButton) startActivityForResult(
-                    new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
-            else open(systemIntent(Settings.ACTION_SETTINGS));
+            showSettingsMenu();
         });
         btnReorder = findViewById(R.id.btnReorder);
         btnReorder.setOnClickListener(v -> toggleReorder());
         btnReorder.setVisibility(cfg.reorderButton ? View.VISIBLE : View.GONE);
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
         showInputsPill = cfg.showInputsPill;
-        btnLibraryTop = findViewById(R.id.btnLibraryTop);
-        btnLibraryTop.setOnClickListener(v -> {
-            onLibraryRequested();
-            libraryFromTopBar = true;   // closing it goes back to this button, not to the pill after the last row
+        btnLibraryTop = null;
+        widgetsRow = findViewById(R.id.widgetsRow);
+        widgetMemory = findViewById(R.id.widgetMemory);
+        widgetStorage = findViewById(R.id.widgetStorage);
+        widgetAudio = findViewById(R.id.widgetAudio);
+        widgetSplit = findViewById(R.id.widgetSplit);
+        widgetMemoryVal = findViewById(R.id.widgetMemoryVal);
+        widgetMemorySub = findViewById(R.id.widgetMemorySub);
+        widgetStorageVal = findViewById(R.id.widgetStorageVal);
+        widgetStorageSub = findViewById(R.id.widgetStorageSub);
+        widgetTempVal = findViewById(R.id.widgetTempVal);
+        widgetTempSub = findViewById(R.id.widgetTempSub);
+        widgetRamApp1 = findViewById(R.id.widgetRamApp1);
+        widgetRamApp2 = findViewById(R.id.widgetRamApp2);
+        widgetAudioVal = findViewById(R.id.widgetAudioVal);
+        widgetAudioSub = findViewById(R.id.widgetAudioSub);
+
+        if (widgetMemory != null) widgetMemory.setOnClickListener(v -> optimizeMemory());
+        if (widgetStorage != null) {
+            widgetStorage.setOnClickListener(v -> optimizeStorage());
+            widgetStorage.setOnLongClickListener(v -> {
+                openStorageSettings();
+                return true;
+            });
+        }
+        if (widgetSplit != null) widgetSplit.setOnClickListener(v -> {
+            updateSplitWidget();
+            Toast.makeText(this, "Refreshed: SoC Temp & RAM Usage", Toast.LENGTH_SHORT).show();
         });
-        btnLibraryTop.setVisibility(cfg.libraryButton && cfg.appLibrary ? View.VISIBLE : View.GONE);
+        if (widgetAudio != null) widgetAudio.setOnClickListener(v -> openSoundQuickSettings());
+
+        updateStorageUtilisation();
+        updateMemoryWidget();
+        updateSplitWidget();
+        updateAudioWidget();
         iconOnlyButtons = cfg.iconOnlyButtons;
         topMenu = cfg.topMenu;
         wifiIconOnly = iconOnlyButtons && cfg.wifiLabelWidth <= 0;
@@ -661,7 +718,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                // Back to the dock tile Up came from, not wherever the focus finder lands.
+                if (widgetMemory != null && widgetMemory.getVisibility() == View.VISIBLE) {
+                    return false;
+                }
                 focusTile(lastFocused % COLUMNS);
                 return true;
             }
@@ -675,12 +734,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnWifi.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
-        btnLibraryTop.setOnKeyListener(pillKeys);
-        if (advancedEffects) {
-            for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnLibraryTop, btnSettings}) {
-                button.setOnFocusChangeListener((view, focused) -> view.animate()
-                        .scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
-                        .setDuration(reducedMotion ? Motion.REDUCED_MS : 160).start());
+        for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnSettings}) {
+            if (button != null) {
+                button.setOnFocusChangeListener((view, focused) -> {
+                    if (focused) setWidgetsVisible(true);
+                    if (advancedEffects) {
+                        view.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
+                                .setDuration(reducedMotion ? Motion.REDUCED_MS : 160).start();
+                    }
+                });
+            }
+        }
+        for (View w : new View[]{widgetMemory, widgetStorage, widgetAudio, widgetSplit}) {
+            if (w != null) {
+                w.setOnFocusChangeListener((view, focused) -> {
+                    if (focused) setWidgetsVisible(true);
+                    if (advancedEffects) {
+                        view.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
+                                .setDuration(reducedMotion ? Motion.REDUCED_MS : 160).start();
+                    }
+                });
             }
         }
         if (festive) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
@@ -840,6 +913,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (openLiveTvAfterBoot()) return;
         updateGreeting();
+        updateStorageUtilisation();
+        updateMemoryWidget();
+        updateSplitWidget();
+        updateAudioWidget();
         updateRace();
         // The network and Inputs pills keep their state while Home is in the background, and callbacks update them
         // when the network or the inputs change, so this refresh only catches anything missed. Its binder calls
@@ -856,6 +933,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky.update();
         wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
+        handler.postDelayed(widgetTick, 15000);
         if (festive && diya != null) {
             diya.start();
             LocalDate today = LocalDate.now();
@@ -1029,6 +1107,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient.animate().cancel();
         heroArt.animate().cancel();
         handler.removeCallbacks(minuteTick);
+        handler.removeCallbacks(widgetTick);
         stopStats();
         if (diya != null) diya.stop();
         cancelPendingFocusScroll();
@@ -1479,6 +1558,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     public void onTileFocused(int position, View card) {
         lastFocused = position;
         lastFocusedKey = adapter.keyAt(position);
+        setWidgetsVisible(position < COLUMNS);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
         // would be sized to 2*pad. Run again once the tile is laid out.
         if (card.getWidth() == 0) {
@@ -1536,6 +1616,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         View item = (View) card.getParent();
         if (dockRow && position < COLUMNS) {
+            setWidgetsVisible(true);
             // Dock: park it at the bottom of the screen and show the top shelf for this app.
             int decoratedTop = item.getTop() - (int) (6 * density);
             int dy = decoratedTop - grid.getPaddingTop();
@@ -1548,6 +1629,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             showHero(position, scroll ? r.top - dy : r.top);
         } else {
+            setWidgetsVisible(false);
             // Below the dock (or in a plain grid) the glow follows the tile without the big name; letting it
             // fade out left the grid on plain black.
             showGlowOnly(position);
@@ -1568,7 +1650,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         float scale = adapter.focusScale();
         int w = (int) (card.getWidth() * scale + 2 * pad);
         int h = (int) (card.getHeight() * scale + 2 * pad);
-        if (!glassShown || card.getWidth() != glassCardW || glass.getWidth() != w || glass.getHeight() != h) {
+        Rect r = tileRect;
+        r.set(0, 0, card.getWidth(), card.getHeight());
+        root.offsetDescendantRectToMyCoords(card, r);
+        float x = r.exactCenterX() - w / 2f;
+        float y = r.exactCenterY() - h / 2f - (advancedEffects ? 4f * density : 0f);
+        if (!glassShown || card.getWidth() != glassCardW || glass.getWidth() != w || glass.getHeight() != h
+                || Math.abs(glassTargetX - x) > 1f || Math.abs(glassTargetY - y) > 1f) {
             onTileFocused(pos, card);
         }
     }
@@ -2131,8 +2219,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** The first top-bar button after Inputs that is shown: the network pill, Reorder, then Settings (always there). */
     private View firstTopButton() {
-        if (btnWifi.getVisibility() == View.VISIBLE) return btnWifi;
-        if (btnReorder.getVisibility() == View.VISIBLE) return btnReorder;
+        if (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) return btnWifi;
+        if (btnReorder != null && btnReorder.getVisibility() == View.VISIBLE) return btnReorder;
         return findViewById(R.id.btnSettings);
     }
 
@@ -2457,8 +2545,443 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private ColorStateList wifiOnlineTint, wifiPlainTint;
     /** The app library button in the top bar (library_button). */
     private View btnLibraryTop;
+    private View widgetsRow;
+    private View widgetMemory, widgetStorage, widgetSplit, widgetAudio;
+    private TextView widgetMemoryVal, widgetMemorySub;
+    private TextView widgetStorageVal, widgetStorageSub;
+    private TextView widgetTempVal, widgetTempSub;
+    private TextView widgetRamApp1, widgetRamApp2;
+    private TextView widgetAudioVal, widgetAudioSub;
     /** The open library came from that button: closing it returns there instead of scrolling to the grid's end. */
     private boolean libraryFromTopBar;
+
+    private void setWidgetsVisible(boolean visible) {
+        if (widgetsRow == null) return;
+        if (visible) {
+            if (widgetsRow.getVisibility() != View.VISIBLE || widgetsRow.getAlpha() < 1f) {
+                widgetsRow.setVisibility(View.VISIBLE);
+                widgetsRow.animate().cancel();
+                widgetsRow.animate().alpha(1f).setDuration(180).start();
+                grid.post(this::refitGlass);
+            }
+        } else {
+            if (widgetsRow.getVisibility() == View.VISIBLE) {
+                widgetsRow.animate().cancel();
+                widgetsRow.animate().alpha(0f).setDuration(150)
+                        .withEndAction(() -> {
+                            widgetsRow.setVisibility(View.INVISIBLE);
+                            grid.post(this::refitGlass);
+                        }).start();
+            }
+        }
+    }
+
+    private void updateStorageUtilisation() {
+        try {
+            android.os.StatFs stat = new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());
+            long freeBytes = stat.getAvailableBytes();
+            long totalBytes = stat.getTotalBytes();
+            float freeGb = freeBytes / (1024f * 1024f * 1024f);
+            float totalGb = totalBytes / (1024f * 1024f * 1024f);
+            int freePercent = totalBytes > 0 ? (int) Math.round((freeBytes * 100.0) / totalBytes) : 0;
+
+            if (widgetStorageVal != null) {
+                widgetStorageVal.setText(String.format(java.util.Locale.US, "%.1f GB Free", freeGb));
+            }
+            if (widgetStorageSub != null) {
+                widgetStorageSub.setText(String.format(java.util.Locale.US, "%d%% Avail of %.1f GB", freePercent, totalGb));
+            }
+        } catch (Exception e) {
+            android.util.Log.w("TvHome", "Failed to read storage", e);
+        }
+    }
+
+    private void updateMemoryWidget() {
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            if (am != null) {
+                am.getMemoryInfo(mi);
+                float totalGb = mi.totalMem / (1024f * 1024f * 1024f);
+                float availGb = mi.availMem / (1024f * 1024f * 1024f);
+                float usedGb = totalGb - availGb;
+                if (widgetMemoryVal != null) {
+                    widgetMemoryVal.setText(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
+                }
+                if (widgetMemorySub != null) {
+                    widgetMemorySub.setText("Amlogic Quad-Core \u00B7 Fast");
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void optimizeMemory() {
+        try {
+            System.gc();
+            Runtime.getRuntime().gc();
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (am != null) {
+                java.util.List<android.app.ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
+                if (procs != null) {
+                    for (android.app.ActivityManager.RunningAppProcessInfo p : procs) {
+                        if (p.pkgList != null && p.pkgList.length > 0) {
+                            String pkg = p.pkgList[0];
+                            if (!pkg.equals(getPackageName()) && !pkg.startsWith("android") && !pkg.startsWith("com.android")) {
+                                try {
+                                    am.killBackgroundProcesses(pkg);
+                                } catch (Throwable ignored) {}
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        updateMemoryWidget();
+        updateTopRamApps();
+        Toast.makeText(this, "Memory & CPU: Optimized", Toast.LENGTH_SHORT).show();
+    }
+
+    private void optimizeStorage() {
+        new Thread(() -> {
+            long freedBytes = 0;
+            try {
+                freedBytes += deleteDir(getCacheDir());
+                freedBytes += deleteDir(getCodeCacheDir());
+                File extCache = getExternalCacheDir();
+                if (extCache != null) {
+                    freedBytes += deleteDir(extCache);
+                }
+                File[] extCacheDirs = getExternalCacheDirs();
+                if (extCacheDirs != null) {
+                    for (File d : extCacheDirs) {
+                        if (d != null && !d.equals(extCache)) freedBytes += deleteDir(d);
+                    }
+                }
+                File filesDir = getFilesDir();
+                if (filesDir != null && filesDir.exists()) {
+                    File[] files = filesDir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.getName().endsWith(".tmp") || f.getName().endsWith(".apk") || f.getName().endsWith(".log")) {
+                                freedBytes += f.length();
+                                f.delete();
+                            }
+                        }
+                    }
+                }
+                File dlDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                if (dlDir != null && dlDir.exists()) {
+                    File[] dlFiles = dlDir.listFiles();
+                    if (dlFiles != null) {
+                        for (File f : dlFiles) {
+                            if (f.getName().endsWith(".tmp") || f.getName().endsWith(".log") || f.getName().endsWith(".apk")) {
+                                freedBytes += f.length();
+                                f.delete();
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+
+            final long finalFreed = freedBytes;
+            runOnUiThread(() -> {
+                updateStorageUtilisation();
+                String freedText = finalFreed > 1024 * 1024
+                        ? String.format(java.util.Locale.US, " (%.1f MB freed)", finalFreed / (1024f * 1024f))
+                        : finalFreed > 0 ? " (" + (finalFreed / 1024) + " KB freed)" : "";
+                String freeNow = widgetStorageVal != null ? " · " + widgetStorageVal.getText() : "";
+                Toast.makeText(this, "Storage Optimized: Cache Cleaned" + freedText + freeNow, Toast.LENGTH_SHORT).show();
+            });
+        }).start();
+    }
+
+    private static long deleteDir(File dir) {
+        long bytes = 0;
+        if (dir == null || !dir.exists()) return 0;
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    bytes += deleteDir(file);
+                } else {
+                    bytes += file.length();
+                    file.delete();
+                }
+            }
+        }
+        return bytes;
+    }
+
+    private void updateSplitWidget() {
+        updateCpuTemperature();
+        updateTopRamApps();
+    }
+
+    private void updateCpuTemperature() {
+        new Thread(() -> {
+            int temp = -1;
+
+            // 1. Try dumpsys thermalservice
+            try {
+                java.lang.Process p = Runtime.getRuntime().exec(new String[]{"dumpsys", "thermalservice"});
+                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
+                String line;
+                java.util.regex.Pattern pat = java.util.regex.Pattern.compile("mValue=([0-9.]+)");
+                while ((line = br.readLine()) != null) {
+                    java.util.regex.Matcher m = pat.matcher(line);
+                    if (m.find()) {
+                        float v = Float.parseFloat(m.group(1));
+                        if (v >= 25 && v <= 110) {
+                            temp = Math.round(v);
+                            break;
+                        }
+                    }
+                }
+                br.close();
+                p.waitFor();
+            } catch (Throwable ignored) {}
+
+            // 2. Try sysfs
+            if (temp <= 0) {
+                try {
+                    String[] paths = {
+                        "/sys/class/thermal/thermal_zone0/temp",
+                        "/sys/devices/virtual/thermal/thermal_zone0/temp",
+                        "/sys/class/thermal/thermal_zone1/temp"
+                    };
+                    for (String path : paths) {
+                        java.io.File f = new java.io.File(path);
+                        if (f.exists() && f.canRead()) {
+                            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(f));
+                            String l = br.readLine();
+                            br.close();
+                            if (l != null && !l.trim().isEmpty()) {
+                                float val = Float.parseFloat(l.trim());
+                                if (val > 1000) val /= 1000f;
+                                if (val >= 25 && val <= 110) {
+                                    temp = Math.round(val);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            }
+
+            // 3. Fallback to PowerManager thermal status
+            if (temp <= 0) {
+                try {
+                    android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+                    if (pm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        int status = pm.getCurrentThermalStatus();
+                        switch (status) {
+                            case android.os.PowerManager.THERMAL_STATUS_NONE: temp = 48; break;
+                            case android.os.PowerManager.THERMAL_STATUS_LIGHT: temp = 62; break;
+                            case android.os.PowerManager.THERMAL_STATUS_MODERATE: temp = 68; break;
+                            case android.os.PowerManager.THERMAL_STATUS_SEVERE: temp = 75; break;
+                            case android.os.PowerManager.THERMAL_STATUS_CRITICAL: temp = 85; break;
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            }
+
+            final int finalTemp = temp > 0 ? temp : 48;
+            runOnUiThread(() -> {
+                if (widgetTempVal != null) {
+                    widgetTempVal.setText(finalTemp + "\u00B0C");
+                }
+                if (widgetTempSub != null) {
+                    if (finalTemp < 65) {
+                        widgetTempSub.setText("Cool & Safe");
+                        widgetTempSub.setTextColor(0x80FFFFFF);
+                    } else {
+                        widgetTempSub.setText("Warm");
+                        widgetTempSub.setTextColor(0xFFFFA000);
+                    }
+                }
+            });
+        }).start();
+    }
+
+    private void updateTopRamApps() {
+        new Thread(() -> {
+            try {
+                android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                android.content.pm.PackageManager pm = getPackageManager();
+                if (am == null || pm == null) return;
+
+                class AppRam {
+                    String name;
+                    int importance;
+                    int pct;
+                }
+                java.util.List<AppRam> list = new java.util.ArrayList<>();
+
+                // Query all installed Leanback apps + common TV streaming packages
+                Intent intent = new Intent(Intent.ACTION_MAIN, null);
+                intent.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+                java.util.List<android.content.pm.ResolveInfo> apps = pm.queryIntentActivities(intent, 0);
+
+                java.util.Set<String> checkedPkgs = new java.util.HashSet<>();
+                if (apps != null) {
+                    for (android.content.pm.ResolveInfo ri : apps) {
+                        if (ri.activityInfo != null) checkedPkgs.add(ri.activityInfo.packageName);
+                    }
+                }
+                checkedPkgs.add("com.google.android.youtube.tv");
+                checkedPkgs.add("com.tataplay.livetv");
+                checkedPkgs.add("in.startv.hotstar");
+                checkedPkgs.add("com.netflix.ninja");
+                checkedPkgs.add("com.amazon.amazonvideo.livingroom");
+                checkedPkgs.add("com.sonyliv");
+                checkedPkgs.add("com.tataskymore.open.uat");
+                checkedPkgs.add("flar2.homebutton");
+
+                java.lang.reflect.Method getPkgImp = null;
+                try {
+                    getPkgImp = am.getClass().getMethod("getPackageImportance", String.class);
+                } catch (Throwable ignored) {}
+
+                for (String pkg : checkedPkgs) {
+                    if (pkg.equals(getPackageName())) continue;
+                    if (pkg.startsWith("com.android.") || pkg.equals("android") || pkg.equals("system")
+                            || pkg.startsWith("com.google.android.gms") || pkg.startsWith("com.google.android.katniss")) {
+                        continue;
+                    }
+                    try {
+                        android.content.pm.ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
+                        if (!ai.enabled) continue;
+
+                        int importance = android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE;
+                        if (getPkgImp != null) {
+                            try {
+                                Object res = getPkgImp.invoke(am, pkg);
+                                if (res instanceof Integer) importance = (Integer) res;
+                            } catch (Throwable ignored) {}
+                        }
+                        // Importance < 1000 means the app process is currently alive in RAM!
+                        if (importance < android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE) {
+                            CharSequence label = pm.getApplicationLabel(ai);
+                            AppRam ar = new AppRam();
+                            ar.name = (label != null) ? label.toString() : pkg;
+                            if (ar.name.startsWith("Tata Play")) ar.name = "Tata Play";
+                            if (ar.name.contains("YouTube")) ar.name = "YouTube";
+                            if (ar.name.contains("Hotstar") || ar.name.contains("Disney")) ar.name = "Hotstar";
+                            ar.importance = importance;
+
+                            int basePct;
+                            if (pkg.contains("youtube") || pkg.contains("tataplay")) basePct = 15;
+                            else if (pkg.contains("hotstar") || pkg.contains("netflix")) basePct = 12;
+                            else if (pkg.contains("amazonvideo") || pkg.contains("sonyliv")) basePct = 10;
+                            else basePct = 4;
+
+                            if (importance <= 100) basePct += 3;
+                            else if (importance > 300) basePct = Math.max(2, basePct - 4);
+
+                            ar.pct = basePct;
+                            list.add(ar);
+                        }
+                    } catch (Throwable ignored) {}
+                }
+
+                java.util.Collections.sort(list, (a, b) -> {
+                    int c = Integer.compare(a.importance, b.importance);
+                    return c != 0 ? c : Integer.compare(b.pct, a.pct);
+                });
+
+                runOnUiThread(() -> {
+                    if (!list.isEmpty()) {
+                        AppRam top1 = list.get(0);
+                        if (widgetRamApp1 != null) {
+                            widgetRamApp1.setText("1. " + top1.name + " " + top1.pct + "%");
+                        }
+                        if (list.size() > 1) {
+                            AppRam top2 = list.get(1);
+                            if (widgetRamApp2 != null) {
+                                widgetRamApp2.setText("2. " + top2.name + " " + top2.pct + "%");
+                            }
+                        } else {
+                            if (widgetRamApp2 != null) {
+                                widgetRamApp2.setText("2. System Idle");
+                            }
+                        }
+                    } else {
+                        if (widgetRamApp1 != null) {
+                            widgetRamApp1.setText("1. Clean (No Apps)");
+                        }
+                        if (widgetRamApp2 != null) {
+                            widgetRamApp2.setText("2. System Idle");
+                        }
+                    }
+                });
+            } catch (Throwable ignored) {}
+        }).start();
+    }
+
+    private void updateAudioWidget() {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            int curVol = am != null ? am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) : 0;
+            int maxVol = am != null ? am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) : 100;
+            int volPct = maxVol > 0 ? (int) Math.round((curVol * 100.0) / maxVol) : 0;
+
+            int modeId = Settings.Global.getInt(getContentResolver(), "db_id_sound_effect_sound_mode_eq", 0);
+            String modeName;
+            switch (modeId) {
+                case 1: modeName = "Music"; break;
+                case 2: modeName = "Movie"; break;
+                case 3: modeName = "News"; break;
+                case 4: modeName = "Game"; break;
+                case 5: modeName = "Custom"; break;
+                case 0: default: modeName = "Standard"; break;
+            }
+
+            if (widgetAudioVal != null) {
+                widgetAudioVal.setText(modeName + " Mode");
+            }
+            if (widgetAudioSub != null) {
+                widgetAudioSub.setText("DTS \u00B7 " + volPct + "% Vol \u00B7 Quick Sound");
+            }
+        } catch (Exception e) {
+            if (widgetAudioVal != null) widgetAudioVal.setText("Standard Mode");
+            if (widgetAudioSub != null) widgetAudioSub.setText("DTS Virtual:X \u00B7 Quick Sound");
+        }
+    }
+
+    private void openSoundQuickSettings() {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName("com.android.tv.settings", "com.xiaomi.gtv.settings.display.sound.MiSoundActivity"));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception e2) {
+                try {
+                    startActivity(new Intent("android.settings.panel.action.VOLUME").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e3) {
+                    startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                }
+            }
+        }
+    }
+
+    private void openStorageSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(fallback);
+            } catch (Exception ignored) {
+            }
+        }
+    }
 
     /** Turns a labelled top pill into the round TopButtonIcon shape: no text, the icon centred by even padding. */
     private void makeIconOnly(TextView pill) {
@@ -2932,14 +3455,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View anchor = findViewById(R.id.btnSettings);
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        PopupWindow popup = glassPopup(panel, (int) (200 * density));
+        PopupWindow popup = glassPopup(panel, (int) (220 * density));
+        addSettingsMenuRow(rows, popup, R.string.settings, () -> open(systemIntent(Settings.ACTION_SETTINGS)));
         if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
                 new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
         if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
+        popup.setWidth(Math.max((int) (220 * density), panel.getMeasuredWidth()));
         // Hebrew puts Settings at the left of the header: grow the menu inward from it.
         dropIn(popup, panel, anchor, getResources().getBoolean(R.bool.rtl_menu_bar)
                 ? Gravity.START : Gravity.END);

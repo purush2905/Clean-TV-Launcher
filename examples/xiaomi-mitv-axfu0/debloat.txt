@@ -1,0 +1,59 @@
+# Xiaomi A Series 32" 2025 (MiTV-AXFU0, codename arctictale, Amlogic)
+# Android 14 (SDK 34), firmware UKG3.241124.001.V816.0.26.9.16.UXFAATV
+# Stock launcher: com.google.android.apps.tv.launcherx
+# Live TV app: com.mitv.livetv (set it as live_tv_package in config.xml)
+#
+# Apply:   tools\disable.ps1 -TvHost 192.168.1.106 examples\xiaomi-mitv-axfu0\debloat.txt
+# Undo:    tools\restore.ps1 -TvHost 192.168.1.106 examples\xiaomi-mitv-axfu0\debloat.txt -Stock com.google.android.apps.tv.launcherx
+#
+# Keep (TV needs them): mitv.service, com.mitv.overseaservice, com.mitv.livetv, com.mitv.livetv.it,
+# com.droidlogic.tvinput, com.droidlogic.dtvkit.inputsource, com.mi.bluetooth, com.android.bluetooth,
+# com.mitv.setup, com.xiaomi.android.tvsetup.partnercustomizer.
+# Kept by user choice: com.google.android.youtube.tv, com.google.android.youtube.tvmusic,
+# in.startv.hotstar, com.google.android.katniss, com.google.android.apps.mediashell.
+
+# Manufacturer telemetry / analytics
+com.miui.tv.analytics
+com.xiaomi.statistic
+com.xiaomi.tvqs.overseas.y24
+com.google.android.feedback
+
+# PatchWall / "Mi Home" tab, content rows, ad services
+com.mitv.tvhome.atv
+com.mitv.tvhome.michannel
+com.mitv.tvhome.mitvplus
+com.mitv.tvhome.oemtab
+com.xm.webcontent
+android.autoinstalls.config.soc.amlogic
+com.graymatrix.did
+com.android.adservices.api
+
+# Background services / cleaners / duplicates
+com.xiaomi.mitv.tvmanager
+com.mitv.toolhouse
+com.xiaomi.mitv.detection
+com.xiaomi.mitv.manualhelp
+com.xiaomo.tv.milegal
+com.google.android.play.games
+com.xiaomi.mimusic2
+
+# Unused screen share / Miracast
+com.xiaomi.mitv.smartshare
+com.xiaomi.wfdsinkhelperservice
+com.xiaomi.mi_connect_service
+
+# Firmware update services
+com.xiaomi.mitv.updateservice
+com.mitv.upgrader
+com.mitv.ABUpdateStatus
+com.droidlogic.updater
+
+# Preloaded streaming apps not used
+com.amazon.amazonvideo.livingroom
+com.sonyliv
+com.netflix.ninja
+com.netflix.tokenmanager
+
+# Google TV stock launcher and setup wizard
+com.google.android.tungsten.setupwraith
+com.google.android.apps.tv.launcherx

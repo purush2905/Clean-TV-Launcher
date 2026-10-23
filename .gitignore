@@ -17,5 +17,7 @@ traces/
 # Generated install bundles and JVM crash reports stay out of contributions.
 *.apk
 *.aab
+*.png
+scratch_*.py
 launcher/hs_err_pid*.log
 launcher/replay_pid*.log
