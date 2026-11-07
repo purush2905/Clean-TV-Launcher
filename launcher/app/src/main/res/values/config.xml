@@ -162,9 +162,9 @@
         <item>KEYCODE_BUTTON_4:com.android.vending</item>
         <item>KEYCODE_BUTTON_5:com.android.vending</item>
 
-        <!-- Xiaomi TV+ Button -> Tata Play Binge -->
-        <item>scan:396:com.tataskymore.open.uat</item>
-        <item>KEYCODE_VIDEO_APP_5:com.tataskymore.open.uat</item>
+        <!-- Xiaomi TV+ Button -> Instant RAM Boost (Cleans background apps, preserves active app) -->
+        <item>scan:396:action:boost</item>
+        <item>KEYCODE_VIDEO_APP_5:action:boost</item>
     </string-array>
 
     <!-- Package of the stock launcher, for TVs whose firmware turns it back on after it was disabled. XGIMI's
