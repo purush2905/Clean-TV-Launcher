@@ -34,17 +34,25 @@ import java.util.Set;
  */
 public class HomeKeyService extends AccessibilityService {
 
+    private static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
+
     /** restore_key_services was on when the config was read: this helper is noted for ServiceRepair. */
     private boolean repairRecord;
     /** Remote buttons that should open Settings (config.xml, settings_key_scancodes and settings_key_keycodes). */
     private int[] settingsScancodes = new int[0];
     private int[] settingsKeycodes = new int[0];
+    private int[] inputKeycodes = new int[0];
     private boolean settingsPanel;
     /** app_keys, the same maps InputKeyService reads, for setups that run only this service. */
     private Map<Integer, String> appKeys = Collections.emptyMap();
     private Map<Integer, String> appScancodes = Collections.emptyMap();
     private Map<Integer, String> holdAppKeys = Collections.emptyMap();
     private Map<Integer, String> holdAppScancodes = Collections.emptyMap();
+
+    /** Synthesizes volume key repeat when Android suppresses it under accessibility filtering. */
+    private final android.os.Handler volumeHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable volumeRepeater = null;
+    private int activeVolumeKey = 0;
 
     /** Waits for the user to unlock when Android binds this service at boot; null once the config is read. */
     private BroadcastReceiver unlockReceiver;
@@ -117,6 +125,7 @@ public class HomeKeyService extends AccessibilityService {
         }
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
+        inputKeycodes = config.inputKeycodes;
     }
 
     private boolean isSettingsKey(KeyEvent event) {
@@ -126,8 +135,64 @@ public class HomeKeyService extends AccessibilityService {
         return false;
     }
 
+    private boolean isInputKey(int keyCode) {
+        if (keyCode == KeyEvent.KEYCODE_TV || keyCode == KeyEvent.KEYCODE_TV_INPUT) return true;
+        for (int code : inputKeycodes) if (keyCode == code) return true;
+        return false;
+    }
+
+    /** Smoothly repeats volume stepping when held, restoring native behavior under accessibility filtering. */
+    private void handleVolumeKey(KeyEvent event) {
+        final int keyCode = event.getKeyCode();
+        if (keyCode != KeyEvent.KEYCODE_VOLUME_UP && keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) return;
+        final int action = event.getAction();
+        if (action == KeyEvent.ACTION_DOWN) {
+            if (activeVolumeKey != keyCode) {
+                activeVolumeKey = keyCode;
+                if (volumeRepeater != null) {
+                    volumeHandler.removeCallbacks(volumeRepeater);
+                    volumeRepeater = null;
+                }
+                final int direction = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+                        ? android.media.AudioManager.ADJUST_RAISE
+                        : android.media.AudioManager.ADJUST_LOWER;
+                final android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                volumeRepeater = new Runnable() {
+                    @Override
+                    public void run() {
+                        if (activeVolumeKey != keyCode) return;
+                        if (am != null) {
+                            try {
+                                am.adjustSuggestedStreamVolume(direction,
+                                        android.media.AudioManager.USE_DEFAULT_STREAM_TYPE,
+                                        android.media.AudioManager.FLAG_SHOW_UI);
+                            } catch (Throwable ignored) {}
+                        }
+                        volumeHandler.postDelayed(this, 50);
+                    }
+                };
+                // Initial delay before continuous repeat kicks in
+                volumeHandler.postDelayed(volumeRepeater, 260);
+            }
+        } else if (action == KeyEvent.ACTION_UP) {
+            if (activeVolumeKey != 0) {
+                activeVolumeKey = 0;
+                if (volumeRepeater != null) {
+                    volumeHandler.removeCallbacks(volumeRepeater);
+                    volumeRepeater = null;
+                }
+            }
+        }
+    }
+
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        // Fast-path volume keys: synthesize smooth repeat while letting initial down/up pass through to system
+        if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP || event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            handleVolumeKey(event);
+            return false;
+        }
+
         // A scancode entry is more specific than any keycode, so it goes first.
         if (RemoteKeys.handle(this, event, appScancodes.get(event.getScanCode()),
                 holdAppScancodes.get(event.getScanCode()))) return true;
@@ -146,6 +211,21 @@ public class HomeKeyService extends AccessibilityService {
         }
         if (RemoteKeys.handle(this, event, appKeys.get(event.getKeyCode()),
                 holdAppKeys.get(event.getKeyCode()))) return true;
+        if (isInputKey(event.getKeyCode())) {
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                Intent view = new Intent(ACTION_VIEW_INPUTS);
+                try {
+                    startActivity(view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (ActivityNotFoundException | SecurityException e) {
+                    try {
+                        startActivity(new Intent(this, MainActivity.class)
+                                .putExtra("open_inputs", true)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (Throwable ignored) {}
+                }
+            }
+            return true;
+        }
         if (event.getKeyCode() != KeyEvent.KEYCODE_ALL_APPS) return false;
         if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
             Intent home = new Intent(Intent.ACTION_MAIN)
@@ -160,6 +240,11 @@ public class HomeKeyService extends AccessibilityService {
     /** Unbound by Android: the user turned the helper off, so Home doesn't put it back (ServiceRepair). */
     @Override
     public boolean onUnbind(Intent intent) {
+        activeVolumeKey = 0;
+        if (volumeRepeater != null) {
+            volumeHandler.removeCallbacks(volumeRepeater);
+            volumeRepeater = null;
+        }
         if (repairRecord) ServiceRepair.disconnected(this, getClass());
         return super.onUnbind(intent);
     }
@@ -177,5 +262,10 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     public void onInterrupt() {
+        activeVolumeKey = 0;
+        if (volumeRepeater != null) {
+            volumeHandler.removeCallbacks(volumeRepeater);
+            volumeRepeater = null;
+        }
     }
 }
