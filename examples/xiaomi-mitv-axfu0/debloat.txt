@@ -37,10 +37,10 @@ com.xiaomo.tv.milegal
 com.google.android.play.games
 com.xiaomi.mimusic2
 
-# Unused screen share / Miracast
-com.xiaomi.mitv.smartshare
-com.xiaomi.wfdsinkhelperservice
-com.xiaomi.mi_connect_service
+# Screen share / Miracast / Wireless Display (KEEP for phone casting / screen mirroring)
+# com.xiaomi.mitv.smartshare
+# com.xiaomi.wfdsinkhelperservice
+# com.xiaomi.mi_connect_service
 
 # Firmware update services
 com.xiaomi.mitv.updateservice

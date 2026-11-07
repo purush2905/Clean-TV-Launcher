@@ -1,6 +1,6 @@
 # Standalone restore script for Xiaomi A Series 32" 2025 (MiTV-AXFU0)
 param(
-    [string]$TvHost = "192.168.1.106:5555"
+    [string]$TvHost = "192.168.1.103:5555"
 )
 $ErrorActionPreference = 'Continue'
 $pkgs = @(

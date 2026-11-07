@@ -2,7 +2,7 @@
 echo ===================================================
 echo Xiaomi A Series 32" 2025 (MiTV-AXFU0) Restore Tool
 echo ===================================================
-set TV_IP=192.168.1.106:5555
+set TV_IP=192.168.1.103:5555
 
 echo Re-enabling all debloated packages...
 adb -s %TV_IP% shell pm enable --user 0 com.miui.tv.analytics
