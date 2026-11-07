@@ -153,13 +153,14 @@
         <item>scan:219:com.tataplay.livetv</item>
         <item>KEYCODE_GUIDE:com.tataplay.livetv</item>
 
-        <!-- PatchWall / Apps (4-squares icon) Button -> CleanYourTV Home -->
-        <item>scan:216:com.gathin.tvhome</item>
-        <item>scan:399:com.gathin.tvhome</item>
-        <item>scan:400:com.gathin.tvhome</item>
-        <item>KEYCODE_ALL_APPS:com.gathin.tvhome</item>
-        <item>KEYCODE_BUTTON_4:com.gathin.tvhome</item>
-        <item>KEYCODE_BUTTON_5:com.gathin.tvhome</item>
+        <!-- PatchWall / Apps (4-squares icon) Button -> Google Play Store -->
+        <item>scan:216:com.android.vending</item>
+        <item>scan:399:com.android.vending</item>
+        <item>scan:400:com.android.vending</item>
+        <item>scan:150:com.android.vending</item>
+        <item>KEYCODE_ALL_APPS:com.android.vending</item>
+        <item>KEYCODE_BUTTON_4:com.android.vending</item>
+        <item>KEYCODE_BUTTON_5:com.android.vending</item>
 
         <!-- Xiaomi TV+ Button -> Tata Play Binge -->
         <item>scan:396:com.tataskymore.open.uat</item>
