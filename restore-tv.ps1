@@ -41,6 +41,9 @@ $pkgs = @(
     "com.google.android.partnersetup",
     "com.google.android.tungsten.setupwraith",
     "com.google.android.apps.tv.launcherx",
+    "com.mitv.livetv",
+    "com.mitv.livetv.it",
+    "com.mitv.livetv.ci_mediatek",
     "com.android.printspooler",
     "com.android.healthconnect.controller",
     "com.android.health.connect.backuprestore"

@@ -42,6 +42,9 @@ adb -s %TV_IP% shell pm enable --user 0 com.android.tv.feedbackconsent
 adb -s %TV_IP% shell pm enable --user 0 com.google.android.partnersetup
 adb -s %TV_IP% shell pm enable --user 0 com.google.android.tungsten.setupwraith
 adb -s %TV_IP% shell pm enable --user 0 com.google.android.apps.tv.launcherx
+adb -s %TV_IP% shell pm enable --user 0 com.mitv.livetv
+adb -s %TV_IP% shell pm enable --user 0 com.mitv.livetv.it
+adb -s %TV_IP% shell pm enable --user 0 com.mitv.livetv.ci_mediatek
 adb -s %TV_IP% shell pm enable --user 0 com.android.printspooler
 adb -s %TV_IP% shell pm enable --user 0 com.android.healthconnect.controller
 adb -s %TV_IP% shell pm enable --user 0 com.android.health.connect.backuprestore

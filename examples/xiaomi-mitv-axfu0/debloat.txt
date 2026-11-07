@@ -54,6 +54,11 @@ com.sonyliv
 com.netflix.ninja
 com.netflix.tokenmanager
 
+# Stock Live TV / Antenna tuner (disabled to save RAM per user request)
+com.mitv.livetv
+com.mitv.livetv.it
+com.mitv.livetv.ci_mediatek
+
 # Google TV stock launcher and setup wizard
 com.google.android.tungsten.setupwraith
 com.google.android.apps.tv.launcherx
