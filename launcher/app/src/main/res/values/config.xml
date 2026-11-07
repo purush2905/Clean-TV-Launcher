@@ -115,56 +115,55 @@
          evdev MSC_SCAN there, which is not always the scanCode the framework reports, so a number that takes
          nothing is no proof the press never arrived. Leave empty to omit. -->
     <integer-array name="settings_key_scancodes">
+        <item>577</item>
     </integer-array>
-    <!-- The same by Android keycode, for buttons whose scancode is shared. TCL Google TV remotes send their
-         Settings button as keycode 83 (KEYCODE_NOTIFICATION, which the stock Google TV home turned into its quick
-         settings panel) on scancode 240 (KEY_UNKNOWN), the scancode several TCL buttons share. Find the keycode
-         with `tools/tv.py 'logcat -v time -s InputReader:D'` while pressing the button - some firmwares print no
-         key line there at any verbosity, and a `getevent` MSC_SCAN is a different number, so the reliable route is
-         a temporary `Log.d` in the helper's `onKeyEvent`: `getKeyCode()`, `getScanCode()`, `getDeviceId()`, read
-         after a HOME_KEY_SERVICE=1 rebuild. Leave empty to omit. -->
     <integer-array name="settings_key_keycodes">
+        <item>176</item> <!-- KEYCODE_SETTINGS -->
     </integer-array>
-    <!-- What those Settings buttons open: false, the TV's Settings; true, a small glass panel at the top right
-         with TV settings, Display, Network, Apps (re-enable an app) and Launcher settings, over whatever is on screen.
-         Both keys can also be set from a theme's config.json ("settings_key_keycodes": [83]). -->
     <bool name="settings_key_panel">false</bool>
 
-    <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
-         off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
-         Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1
-         (-RestoreKeyServices on Windows). Can also be set with "restore_key_services": true in a theme's config.json. -->
-    <bool name="restore_key_services">false</bool>
+    <bool name="restore_key_services">true</bool>
 
-    <!-- More remote buttons that open the input switcher, by Android keycode (INPUT_KEY_SERVICE=1
-         build-and-install.sh; KEYCODE_TV always does). For buttons only a disabled app answered: the Xiaomi
-         MiTV-AXFR2 remote's PatchWall button is 192 (KEYCODE_BUTTON_5). `dumpsys window policy` lists which
-         app each such "global key" was routed to. Check with the real remote: keys injected over ADB never
-         reach InputKeyService. Leave empty to omit. -->
     <integer-array name="input_key_keycodes">
+        <item>178</item> <!-- KEYCODE_TV_INPUT -->
+        <item>170</item> <!-- KEYCODE_TV -->
     </integer-array>
-    <!-- Answer the system input switcher (com.android.tv.action.VIEW_INPUTS) with the Inputs menu. For TVs whose
-         stock launcher was the only handler of that action, so the remote's Input button does nothing once the
-         stock launcher is disabled even with InputKeyService on (Hisense huangshan, Android TV 10: no
-         global_keys.xml, no vendor input picker). Off by default: a TV with its own input picker would otherwise
-         get a chooser on every press. Also "handle_view_inputs": true in a theme's config.json. -->
-    <bool name="handle_view_inputs">false</bool>
-    <!-- Remote buttons that open an app, as "keycode:package" or "KEYCODE_NAME:package" (INPUT_KEY_SERVICE=1 or
-         HOME_KEY_SERVICE=1; both read this one list, and a theme's config.json can set it too). On Google TV the
-         YouTube button sends 190 (KEYCODE_BUTTON_3) to the stock launcher, so it does nothing once launcherx
-         is disabled (Chromecast with Google TV, Xiaomi MiTV-AXFR2): 190:com.google.android.youtube.tv brings
-         it back. The KTC LUMIO VISION remote (Realtek Google TV) sends Netflix 191, YouTube 190, Prime Video 195
-         and TL;DR 200. Some remotes send several app buttons as one keycode and tell them apart only by scancode
-         (Sony BRAVIA: YouTube, Prime Video and Disney+ are all keycode 196, scancodes 485, 490 and 491); list those
-         as "scan:scancode:package", e.g. scan:490:com.wbd.hbomax, found with `tools/tv.py 'getevent -lt'` (the
-         EV_KEY code, in hex). A scancode entry wins over a keycode. In place of a package, "input:<input id>"
-         switches to that TV input, e.g. scan:227:input:com.tcl.tvinput/.passthroughinput.TvPassThroughService/HW1413744640
-         for HDMI 3 on a TCL Smart TV Pro; the ids are in `tools/tv.py 'dumpsys tv_input'` (hdmi_port=N under
-         TvInputHardwareInfo). Prefix an entry with "hold:" for the same button's long press:
-         "hold:KEYCODE_BUTTON_8:org.xbmc.kodi" opens Kodi when held for half a second, while the unprefixed entry
-         still opens on a tap; "hold:scan:490:..." works for scancodes. A key with only a hold entry does nothing
-         on a tap. A listed app that is not installed leaves the button doing nothing. Leave empty to omit. -->
+    <bool name="handle_view_inputs">true</bool>
+
     <string-array name="app_keys" translatable="false">
+        <!-- Live TV Hotkey -> Tata Play Smart -->
+        <item>scan:580:com.tataplay.livetv</item>
+        <item>scan:393:com.tataplay.livetv</item>
+        <item>scan:156:com.tataplay.livetv</item>
+        <item>KEYCODE_FEATURED_APP_1:com.tataplay.livetv</item>
+        <item>KEYCODE_BUTTON_3:com.tataplay.livetv</item>
+        <item>KEYCODE_BUTTON_9:com.tataplay.livetv</item>
+
+        <!-- YouTube Hotkey -->
+        <item>scan:425:com.google.android.youtube.tv</item>
+        <item>KEYCODE_VIDEO_APP_8:com.google.android.youtube.tv</item>
+
+        <!-- JioHotstar Hotkey -->
+        <item>scan:421:in.startv.hotstar</item>
+        <item>scan:233:in.startv.hotstar</item>
+        <item>KEYCODE_VIDEO_APP_3:in.startv.hotstar</item>
+        <item>KEYCODE_VIDEO_APP_4:in.startv.hotstar</item>
+
+        <!-- EPG / Guide Button -> Tata Play Smart -->
+        <item>scan:219:com.tataplay.livetv</item>
+        <item>KEYCODE_GUIDE:com.tataplay.livetv</item>
+
+        <!-- PatchWall / Apps (4-squares icon) Button -> CleanYourTV Home -->
+        <item>scan:216:com.gathin.tvhome</item>
+        <item>scan:399:com.gathin.tvhome</item>
+        <item>scan:400:com.gathin.tvhome</item>
+        <item>KEYCODE_ALL_APPS:com.gathin.tvhome</item>
+        <item>KEYCODE_BUTTON_4:com.gathin.tvhome</item>
+        <item>KEYCODE_BUTTON_5:com.gathin.tvhome</item>
+
+        <!-- Xiaomi TV+ Button -> Tata Play Binge -->
+        <item>scan:396:com.tataskymore.open.uat</item>
+        <item>KEYCODE_VIDEO_APP_5:com.tataskymore.open.uat</item>
     </string-array>
 
     <!-- Package of the stock launcher, for TVs whose firmware turns it back on after it was disabled. XGIMI's
