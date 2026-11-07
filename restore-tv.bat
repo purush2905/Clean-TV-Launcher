@@ -48,6 +48,19 @@ adb -s %TV_IP% shell pm enable --user 0 com.mitv.livetv.ci_mediatek
 adb -s %TV_IP% shell pm enable --user 0 com.android.printspooler
 adb -s %TV_IP% shell pm enable --user 0 com.android.healthconnect.controller
 adb -s %TV_IP% shell pm enable --user 0 com.android.health.connect.backuprestore
+adb -s %TV_IP% shell pm enable --user 0 com.android.settings.intelligence
+adb -s %TV_IP% shell pm enable --user 0 com.xiaomi.mitv.scenemode
+adb -s %TV_IP% shell pm enable --user 0 com.google.android.syncadapters.calendar
+adb -s %TV_IP% shell pm enable --user 0 com.android.providers.calendar
+adb -s %TV_IP% shell pm enable --user 0 com.android.providers.contacts
+adb -s %TV_IP% shell pm enable --user 0 com.android.providers.userdictionary
+adb -s %TV_IP% shell pm enable --user 0 com.android.hotspot2.osulogin
+adb -s %TV_IP% shell pm enable --user 0 com.android.ondevicepersonalization.services
+adb -s %TV_IP% shell pm enable --user 0 com.android.federatedcompute.services
+adb -s %TV_IP% shell pm enable --user 0 com.android.companiondevicemanager
+adb -s %TV_IP% shell pm enable --user 0 com.android.cts.ctsshim
+adb -s %TV_IP% shell pm enable --user 0 com.android.cts.priv.ctsshim
+adb -s %TV_IP% shell pm enable --user 0 com.google.android.marvin.talkback
 
 echo Restoring stock launcher as default home...
 adb -s %TV_IP% shell cmd package set-home-activity --user 0 com.google.android.apps.tv.launcherx/com.google.android.apps.tv.launcherx.home.HomeActivity

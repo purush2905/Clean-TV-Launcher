@@ -29,13 +29,28 @@ com.graymatrix.did
 com.android.adservices.api
 
 # Background services / cleaners / duplicates
-com.xiaomi.mitv.tvmanager
+# com.xiaomi.mitv.tvmanager (kept: mapped to Xiaomi TV+ remote button)
 com.mitv.toolhouse
 com.xiaomi.mitv.detection
 com.xiaomi.mitv.manualhelp
 com.xiaomo.tv.milegal
 com.google.android.play.games
 com.xiaomi.mimusic2
+com.xiaomi.mitv.scenemode
+
+# Safe unused Android / Google background services & providers
+com.android.settings.intelligence
+com.google.android.syncadapters.calendar
+com.android.providers.calendar
+com.android.providers.contacts
+com.android.providers.userdictionary
+com.android.hotspot2.osulogin
+com.android.ondevicepersonalization.services
+com.android.federatedcompute.services
+com.android.companiondevicemanager
+com.android.cts.ctsshim
+com.android.cts.priv.ctsshim
+com.google.android.marvin.talkback
 
 # Screen share / Miracast / Wireless Display (KEEP for phone casting / screen mirroring)
 # com.xiaomi.mitv.smartshare

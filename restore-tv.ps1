@@ -46,7 +46,20 @@ $pkgs = @(
     "com.mitv.livetv.ci_mediatek",
     "com.android.printspooler",
     "com.android.healthconnect.controller",
-    "com.android.health.connect.backuprestore"
+    "com.android.health.connect.backuprestore",
+    "com.android.settings.intelligence",
+    "com.xiaomi.mitv.scenemode",
+    "com.google.android.syncadapters.calendar",
+    "com.android.providers.calendar",
+    "com.android.providers.contacts",
+    "com.android.providers.userdictionary",
+    "com.android.hotspot2.osulogin",
+    "com.android.ondevicepersonalization.services",
+    "com.android.federatedcompute.services",
+    "com.android.companiondevicemanager",
+    "com.android.cts.ctsshim",
+    "com.android.cts.priv.ctsshim",
+    "com.google.android.marvin.talkback"
 )
 
 Write-Host "Re-enabling packages on $TvHost..."

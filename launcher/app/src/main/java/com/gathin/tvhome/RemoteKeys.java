@@ -157,10 +157,6 @@ final class RemoteKeys {
      *  switches to that TV input (an HDMI port) instead. */
     static void launch(Context ctx, String pkg) {
         if (pkg == null) return;
-        if ("action:boost".equals(pkg) || "boost".equals(pkg)) {
-            boostRam(ctx);
-            return;
-        }
         String inputId = inputId(pkg);
         if (inputId != null) {
             // The same passthrough URI the Inputs menu opens, which the Live TV app handles.
@@ -174,75 +170,25 @@ final class RemoteKeys {
             }
             return;
         }
-        Intent open = ctx.getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
-        if (open == null) open = ctx.getPackageManager().getLaunchIntentForPackage(pkg);
+        Intent open = null;
+        if (pkg.contains("/")) {
+            android.content.ComponentName cn = android.content.ComponentName.unflattenFromString(pkg);
+            if (cn != null) {
+                open = new Intent(Intent.ACTION_MAIN)
+                        .setComponent(cn)
+                        .addCategory(Intent.CATEGORY_LAUNCHER);
+            }
+        }
+        if (open == null) {
+            open = ctx.getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
+        }
+        if (open == null) {
+            open = ctx.getPackageManager().getLaunchIntentForPackage(pkg);
+        }
         if (open == null) return;
         try {
             ctx.startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (ActivityNotFoundException ignored) {
         }
-    }
-
-    /** Cleans background apps except the active foreground app and system services, boosting free RAM. */
-    static void boostRam(Context ctx) {
-        new Thread(() -> {
-            int killed = 0;
-            float freeGb = 0;
-            try {
-                android.app.ActivityManager am = (android.app.ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
-                if (am != null) {
-                    java.util.List<android.app.ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
-                    String currentFgPkg = null;
-                    if (procs != null) {
-                        for (android.app.ActivityManager.RunningAppProcessInfo p : procs) {
-                            if (p.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
-                                if (p.pkgList != null && p.pkgList.length > 0) {
-                                    currentFgPkg = p.pkgList[0];
-                                    break;
-                                }
-                            }
-                        }
-                        java.util.Set<String> purged = new java.util.HashSet<>();
-                        for (android.app.ActivityManager.RunningAppProcessInfo p : procs) {
-                            if (p.pkgList != null && p.pkgList.length > 0) {
-                                for (String pkg : p.pkgList) {
-                                    if (pkg == null || pkg.equals(currentFgPkg) || pkg.equals(ctx.getPackageName())) continue;
-                                    if (pkg.startsWith("android") || pkg.startsWith("com.android.systemui")
-                                            || pkg.startsWith("com.google.android.inputmethod")
-                                            || pkg.startsWith("com.google.android.katniss")
-                                            || pkg.equals("com.google.android.apps.mediashell")
-                                            || pkg.equals("com.droidlogic.tvinput")) {
-                                        continue;
-                                    }
-                                    if (purged.add(pkg)) {
-                                        try {
-                                            am.killBackgroundProcesses(pkg);
-                                            killed++;
-                                        } catch (Throwable ignored) {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    System.gc();
-                    Runtime.getRuntime().gc();
-                    android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
-                    am.getMemoryInfo(mi);
-                    freeGb = mi.availMem / (1024f * 1024f * 1024f);
-                }
-            } catch (Throwable ignored) {}
-
-            final int count = killed;
-            final float free = freeGb;
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                String text;
-                if (count > 0) {
-                    text = String.format(java.util.Locale.US, "⚡ RAM Boosted: %d background apps closed · %.1f GB Free", count, free);
-                } else {
-                    text = String.format(java.util.Locale.US, "⚡ RAM Clean: %.1f GB Free · System Fast", free);
-                }
-                android.widget.Toast.makeText(ctx.getApplicationContext(), text, android.widget.Toast.LENGTH_SHORT).show();
-            });
-        }).start();
     }
 }

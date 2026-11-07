@@ -162,9 +162,9 @@
         <item>KEYCODE_BUTTON_4:com.android.vending</item>
         <item>KEYCODE_BUTTON_5:com.android.vending</item>
 
-        <!-- Xiaomi TV+ Button -> Instant RAM Boost (Cleans background apps, preserves active app) -->
-        <item>scan:396:action:boost</item>
-        <item>KEYCODE_VIDEO_APP_5:action:boost</item>
+        <!-- Xiaomi TV+ Button -> Xiaomi TV Manager -->
+        <item>scan:396:com.xiaomi.mitv.tvmanager</item>
+        <item>KEYCODE_VIDEO_APP_5:com.xiaomi.mitv.tvmanager</item>
     </string-array>
 
     <!-- Package of the stock launcher, for TVs whose firmware turns it back on after it was disabled. XGIMI's
