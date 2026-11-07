@@ -53,6 +53,8 @@ public class HomeKeyService extends AccessibilityService {
     private final android.os.Handler volumeHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private Runnable volumeRepeater = null;
     private int activeVolumeKey = 0;
+    private int volumeRepeatSteps = 0;
+    private static final int MAX_REPEAT_STEPS = 90; // Safety guard against lost ACTION_UP
 
     /** Waits for the user to unlock when Android binds this service at boot; null once the config is read. */
     private BroadcastReceiver unlockReceiver;
@@ -94,6 +96,11 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     public void onDestroy() {
+        if (volumeRepeater != null) {
+            volumeHandler.removeCallbacks(volumeRepeater);
+            volumeRepeater = null;
+        }
+        activeVolumeKey = 0;
         stopWaitingForUnlock();
         super.onDestroy();
     }
@@ -149,6 +156,7 @@ public class HomeKeyService extends AccessibilityService {
         if (action == KeyEvent.ACTION_DOWN) {
             if (activeVolumeKey != keyCode) {
                 activeVolumeKey = keyCode;
+                volumeRepeatSteps = 0;
                 if (volumeRepeater != null) {
                     volumeHandler.removeCallbacks(volumeRepeater);
                     volumeRepeater = null;
@@ -156,33 +164,41 @@ public class HomeKeyService extends AccessibilityService {
                 final int direction = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
                         ? android.media.AudioManager.ADJUST_RAISE
                         : android.media.AudioManager.ADJUST_LOWER;
-                final android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 volumeRepeater = new Runnable() {
                     @Override
                     public void run() {
                         if (activeVolumeKey != keyCode) return;
-                        if (am != null) {
-                            try {
-                                am.adjustSuggestedStreamVolume(direction,
-                                        android.media.AudioManager.USE_DEFAULT_STREAM_TYPE,
-                                        android.media.AudioManager.FLAG_SHOW_UI);
-                            } catch (Throwable ignored) {}
+                        if (++volumeRepeatSteps > MAX_REPEAT_STEPS) {
+                            activeVolumeKey = 0;
+                            return;
                         }
-                        volumeHandler.postDelayed(this, 50);
+                        stepVolume(direction);
+                        volumeHandler.postDelayed(this, 70);
                     }
                 };
                 // Initial delay before continuous repeat kicks in
-                volumeHandler.postDelayed(volumeRepeater, 260);
+                volumeHandler.postDelayed(volumeRepeater, 280);
             }
         } else if (action == KeyEvent.ACTION_UP) {
             if (activeVolumeKey != 0) {
                 activeVolumeKey = 0;
+                volumeRepeatSteps = 0;
                 if (volumeRepeater != null) {
                     volumeHandler.removeCallbacks(volumeRepeater);
                     volumeRepeater = null;
                 }
             }
         }
+    }
+
+    void stepVolume(int direction) {
+        android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (am == null) return;
+        try {
+            am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                    direction,
+                    android.media.AudioManager.FLAG_SHOW_UI);
+        } catch (Throwable ignored) {}
     }
 
     @Override
